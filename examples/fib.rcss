@@ -15,6 +15,9 @@
 	background-position: 1 0;
 	border: 2 none #000;
 
+	padding-left: 35;
+	padding-left: 58;
+	padding-left: 32;
 	padding-right: 0;
 	padding-top: 0;
 

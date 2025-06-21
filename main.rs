@@ -22,10 +22,12 @@ enum Expr {
 	SelectVar(i32), // which var to select
 	SetVar(i32), // value to set selected var to
 	// NOTE totally ignoring the loop type for now
-	Loop(i32, i32), // stores the start and end value
+	Loop(i32, char, i32), // stores the start, type, end
 	LoopEnd,
 	Math(i32, char, i32), // stores lhs, op, rhs
 	AddToPrint(i32), // Which var to add
+	AddCharToPrint(i32),
+	AddVarCharPrint(i32),
 	Print(i32), // the amount of vars to print
 }
 
@@ -138,6 +140,8 @@ fn main() -> std::io::Result<()> {
 					"outline:" => command = 3,
 					"border:" => command = 4,
 					"padding-right:" => command = 5,
+					"padding-left:" => command = 8,
+					"padding-bottom:" => command = 9,
 					"padding-top:" => command = 6,
 					"overflow:" => command = 7,
 					_ => {}
@@ -152,7 +156,14 @@ fn main() -> std::io::Result<()> {
 				0 => exprs.push(Expr::CreateVarSpace(args[0].value)),
 				1 => exprs.push(Expr::SelectVar(args[0].value)),
 				2 => exprs.push(Expr::SetVar(args[0].value)),
-				3 => exprs.push(Expr::Loop(args[0].value, args[2].value)),
+				3 => {
+					let mut c: char = ' ';
+					match args[1].string.as_str() {
+						"solid" => c = '+', // step of +1
+						_ => {}
+					}
+					exprs.push(Expr::Loop(args[0].value, c, args[2].value));
+				}
 				4 => {
 					let mut c: char = ' ';
 					match args[1].string.as_str() {
@@ -165,6 +176,8 @@ fn main() -> std::io::Result<()> {
 				5 => exprs.push(Expr::AddToPrint(args[0].value)),
 				6 => exprs.push(Expr::Print(args[0].value)),
 				7 => exprs.push(Expr::LoopEnd),
+				8 => exprs.push(Expr::AddCharToPrint(args[0].value)),
+				9 => exprs.push(Expr::AddVarCharPrint(args[0].value)),
 				_ => {}
 			}
 			command = -1;
@@ -195,19 +208,24 @@ fn main() -> std::io::Result<()> {
 			}
 			Expr::SelectVar(var_index) => selected_var = var_index,
 			Expr::SetVar(value) => vars[selected_var as usize] = value,
-			Expr::Loop(start, end) => {
+			Expr::Loop(start, t, end) => {
 				if loop_index < 0 {
 					loop_index = index;
 					iterator = start;
 				}
 				else {
-					if iterator >= end {
-						loop_index = -1;
+					match t {
+						'+' => {
+							iterator += 1;
+							if iterator >= end {
+								loop_index = -1;
+							}
+						}
+						_ => loop_index = -1,
 					}
 				}
 			}
 			Expr::LoopEnd => {
-				iterator += 1;
 				if loop_index > 0 {
 					index = loop_index;
 					index -= 1;
@@ -221,19 +239,22 @@ fn main() -> std::io::Result<()> {
 				}
 			}
 			Expr::AddToPrint(var_index) => printing.push(var_index),
+			Expr::AddCharToPrint(char_value) => printing.push(-char_value),
+			Expr::AddVarCharPrint(var_index) => printing.push(-vars[var_index as usize]),
 			Expr::Print(count) => {
-				if count == 0 {
-					for i in &printing {
-						print!("{} ", vars[*i as usize]);
-					}
-					println!("");
+				let mut end = count as usize;
+				if count == 0 || count > printing.len() as i32 {
+					end = printing.len();
 				}
-				else{
-					for i in 0..count {
-						print!("{} ", vars[i as usize]);
+				for i in 0..end {
+					if printing[i] >= 0 {
+						print!("{} ", vars[printing[i] as usize]);
 					}
-					println!("");
+					else {
+						print!("{}", -printing[i] as u8 as char);
+					}
 				}
+				println!("");
 				printing.clear();
 			}
 		}

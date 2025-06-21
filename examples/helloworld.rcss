@@ -1,0 +1,19 @@
+.main {
+	background-size: 1;
+
+	background-position: 0 1;
+	background-color: #048;
+
+	padding-bottom: 0;
+	padding-left: 101;
+	padding-left: 108;
+	padding-left: 108;
+	padding-left: 111;
+	padding-left: 32;
+	padding-left: 87;
+	padding-left: 111;
+	padding-left: 114;
+	padding-left: 108;
+	padding-left: 100;
+	padding-top: 0;
+}
