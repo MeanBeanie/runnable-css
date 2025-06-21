@@ -1,0 +1,22 @@
+.main {
+	background-size: 3;
+
+	background-position: 1 0;
+	background-color: #001;
+
+	outline: 0 solid #00a;
+
+	background-position: 2 0;
+	border: 0 solid #001;
+
+	background-position: 0 0;
+	border: 1 none #000;
+
+	background-position: 1 0;
+	border: 2 none #000;
+
+	padding-right: 0;
+	padding-top: 0;
+
+	overflow: auto;
+}
