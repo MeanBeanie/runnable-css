@@ -27,6 +27,9 @@ enum Expr {
 	AddCharToPrint(i32), // which char to add
 	AddVarCharPrint(i32), // which var to treat a char when added
 	Print(i32), // the amount of vars to print
+	Conditional(i32, i32, i32, i32),
+	Label(i32),
+	Exit,
 }
 
 #[derive(Clone)]
@@ -167,6 +170,9 @@ fn main() -> std::io::Result<()> {
 					"padding-bottom:" => command = 9,
 					"padding-top:" => command = 6,
 					"overflow:" => command = 7,
+					"margin:" => command = 10,
+					"opacity:" => command = 11,
+					"word-wrap:" => command = 12,
 					_ => {}
 				}
 			}
@@ -208,6 +214,9 @@ fn main() -> std::io::Result<()> {
 				7 => exprs.push(Expr::LoopEnd),
 				8 => exprs.push(Expr::AddCharToPrint(args[0].value)),
 				9 => exprs.push(Expr::AddVarCharPrint(args[0].value)),
+				10 => exprs.push(Expr::Conditional(args[0].value, args[1].value, args[2].value, args[3].value)),
+				11 => exprs.push(Expr::Label(args[0].value)),
+				12 => exprs.push(Expr::Exit),
 				_ => {}
 			}
 			command = -1;
@@ -220,15 +229,34 @@ fn main() -> std::io::Result<()> {
 
 	println!("Found {} expressions", exprs.len());
 
-	println!("PROG START:\n");
+	println!("PROG START:");
 
 	let mut vars: Vec<Var> = vec![];
+	let mut labels: Vec<i32> = vec![];
 	let mut selected_var: i32 = 0;
 	let mut rewrite: i32 = 0;
 	let mut loop_index: i32 = -1;
 	let mut iterator: i32 = 0;
 	let mut printing: Vec<i32> = vec![];
 	let mut index: i32 = 0;
+
+	for expr in &exprs {
+		match expr {
+			Expr::Label(label_index) => {
+				if *label_index >= labels.len() as i32 {
+					for _i in labels.len()..(*label_index+1) as usize {
+						labels.push(exprs.len() as i32); // unset labels default to the end of script
+					}
+				}
+
+				labels[*label_index as usize] = index;
+			}
+			_ => {}
+		}
+		index += 1;
+	}
+
+	index = 0;
 
 	while index < exprs.len() as i32 {
 		match exprs[index as usize] {
@@ -374,6 +402,54 @@ fn main() -> std::io::Result<()> {
 				println!("");
 				printing.clear();
 			}
+			Expr::Conditional(lhs, op, rhs, jump) => {
+				let lhs_val: i32;
+				let rhs_val: i32;
+
+				if (op & 0b1000) == 8 {
+					// literal
+					lhs_val = lhs;
+				}
+				else{
+					lhs_val = vars[lhs as usize].clone().as_int().unwrap();
+				}
+
+				if (op & 0b0100) == 4 {
+					// literal
+					rhs_val = rhs;
+				}
+				else{
+					rhs_val = vars[rhs as usize].clone().as_int().unwrap();
+				}
+
+				match op & 0b0011 {
+					0 => {
+						if lhs_val != rhs_val {
+							index = labels[jump as usize];
+						}
+					}
+					1 => {
+						if lhs_val == rhs_val {
+							index = labels[jump as usize];
+						}
+					}
+					2 => {
+						if lhs_val < rhs_val {
+							index = labels[jump as usize];
+						}
+					}
+					3 => {
+						if lhs_val > rhs_val {
+							index = labels[jump as usize];
+						}
+					}
+					_ => {}
+				}
+			}
+			Expr::Exit => {
+				index = exprs.len() as i32;
+			}
+			_ => {}
 		}
 		index += 1;
 	}
