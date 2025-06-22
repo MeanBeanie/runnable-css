@@ -18,8 +18,7 @@ struct Token {
 
 #[derive(PartialEq, Clone)]
 enum Expr {
-	CreateVarSpace(i32), // how many vars to create
-	SelectVar(i32), // which var to select
+	SelectVar(i32, i32), // which var to select
 	SetVar(i32), // value to set selected var to
 	// NOTE totally ignoring the loop type for now
 	Loop(i32, char, i32), // stores the start, type, end
@@ -29,6 +28,28 @@ enum Expr {
 	AddCharToPrint(i32),
 	AddVarCharPrint(i32),
 	Print(i32), // the amount of vars to print
+}
+
+#[derive(Clone)]
+enum Var {
+	Integer(i32),
+	Str(String)
+}
+
+impl Var {
+	fn as_int(self) -> Option<i32> {
+		match self {
+			Self::Integer(a) => Some(a),
+			_ => None
+		}
+	}
+
+	fn as_string(self) -> Option<String> {
+		match self {
+			Self::Str(s) => Some(s),
+			_ => None
+		}
+	}
 }
 
 fn get_number(num: Vec<u8>) -> i32 {
@@ -43,7 +64,7 @@ fn get_number(num: Vec<u8>) -> i32 {
 					let val = (num[i] - b'0') as i32;
 					res += val * mult;
 				}
-				b'a'..b'f' => {
+				b'a'..b'g' => {
 					let mut val = (num[i] - b'a') as i32;
 					val += 10;
 					res += val * mult;
@@ -56,6 +77,9 @@ fn get_number(num: Vec<u8>) -> i32 {
 
 	let mut res: i32 = 0;
 	for i in 0..num.len() {
+		if num[i] == b'%' {
+			break;
+		}
 		let p10 = (num.len()-i-1) as u32;
 		let mut mult: i32 = 10;
 		mult = mult.pow(p10);
@@ -134,7 +158,7 @@ fn main() -> std::io::Result<()> {
 			let bytes = tok.string.as_bytes();
 			if bytes[bytes.len()-1] == b':' {
 				match tok.string.as_str() {
-					"background-size:" => command = 0,
+					"background-size:" => command = 0, // NOTE deprecated
 					"background-position:" => command = 1,
 					"background-color:" => command = 2,
 					"outline:" => command = 3,
@@ -153,8 +177,7 @@ fn main() -> std::io::Result<()> {
 		}
 		else if tok.t == TokenType::Newline {
 			match command {
-				0 => exprs.push(Expr::CreateVarSpace(args[0].value)),
-				1 => exprs.push(Expr::SelectVar(args[0].value)),
+				1 => exprs.push(Expr::SelectVar(args[0].value, args[1].value)),
 				2 => exprs.push(Expr::SetVar(args[0].value)),
 				3 => {
 					let mut c: char = ' ';
@@ -192,8 +215,9 @@ fn main() -> std::io::Result<()> {
 
 	println!("PROG START:");
 
-	let mut vars: Vec<i32> = vec![];
+	let mut vars: Vec<Var> = vec![];
 	let mut selected_var: i32 = 0;
+	let mut rewrite: i32 = 0;
 	let mut loop_index: i32 = -1;
 	let mut iterator: i32 = 0;
 	let mut printing: Vec<i32> = vec![];
@@ -201,13 +225,37 @@ fn main() -> std::io::Result<()> {
 
 	while index < exprs.len() as i32 {
 		match exprs[index as usize] {
-			Expr::CreateVarSpace(var_count) => {
-				for _i in 0..var_count {
-					vars.push(0);
+			Expr::SelectVar(var_index, r) => {
+				selected_var = var_index;
+				rewrite = r;
+				if selected_var as usize >= vars.len() {
+					for _i in vars.len()..(selected_var+1) as usize {
+						vars.push(Var::Integer(0));
+					}
 				}
 			}
-			Expr::SelectVar(var_index) => selected_var = var_index,
-			Expr::SetVar(value) => vars[selected_var as usize] = value,
+			Expr::SetVar(value) => {
+				if rewrite == 0 {
+					if vars[selected_var as usize].clone().as_int() != None {
+						// have an integer
+						vars[selected_var as usize] = Var::Integer(value);
+					}
+					else {
+						// have a string
+						let mut old: String = vars[selected_var as usize].clone().as_string().unwrap();
+						old.push(value as u8 as char);
+						vars[selected_var as usize] = Var::Str(old);
+					}
+				}
+				else{
+					match rewrite {
+						1 => vars[selected_var as usize] = Var::Integer(value),
+						2 => vars[selected_var as usize] = Var::Str(String::from(value as u8 as char)),
+						_ => {}
+					}
+				}
+				rewrite = 0;
+			}
 			Expr::Loop(start, t, end) => {
 				if loop_index < 0 {
 					loop_index = index;
@@ -233,14 +281,26 @@ fn main() -> std::io::Result<()> {
 			}
 			Expr::Math(lhs, op, rhs) => {
 				match op {
-					'+' => vars[selected_var as usize] = vars[lhs as usize] + vars[rhs as usize],
-					'_' => vars[selected_var as usize] = vars[lhs as usize] - rhs,
+					'+' => {
+						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
+							vars[selected_var as usize] = Var::Integer(vars[lhs as usize].clone().as_int().unwrap() + vars[rhs as usize].clone().as_int().unwrap());
+						}
+					}
+					'_' => {
+						if vars[lhs as usize].clone().as_int() != None {
+							vars[selected_var as usize] = Var::Integer(vars[lhs as usize].clone().as_int().unwrap() - rhs);
+						}
+					}
 					_ => {}
 				}
 			}
 			Expr::AddToPrint(var_index) => printing.push(var_index),
 			Expr::AddCharToPrint(char_value) => printing.push(-char_value),
-			Expr::AddVarCharPrint(var_index) => printing.push(-vars[var_index as usize]),
+			Expr::AddVarCharPrint(var_index) => {
+				if vars[var_index as usize].clone().as_int() != None {
+					printing.push(-vars[var_index as usize].clone().as_int().unwrap());
+				}
+			}
 			Expr::Print(count) => {
 				let mut end = count as usize;
 				if count == 0 || count > printing.len() as i32 {
@@ -248,7 +308,12 @@ fn main() -> std::io::Result<()> {
 				}
 				for i in 0..end {
 					if printing[i] >= 0 {
-						print!("{} ", vars[printing[i] as usize]);
+						if vars[printing[i] as usize].clone().as_int() != None {
+							print!("{} ", vars[printing[i] as usize].clone().as_int().unwrap());
+						}
+						else{
+							print!("{} ", vars[printing[i] as usize].clone().as_string().unwrap());
+						}
 					}
 					else {
 						print!("{}", -printing[i] as u8 as char);

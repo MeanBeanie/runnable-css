@@ -11,22 +11,23 @@ below is an example of the first 11 numbers of the fibonacci sequence
 
 ```css
 .main {
-	background-size: 3;
-
-	background-position: 1 0;
+	background-position: 1 1;
 	background-color: #001;
 
 	outline: 0 solid #00a;
 
-	background-position: 2 0;
+	background-position: 2 1;
 	border: 0 solid #001;
 
-	background-position: 0 0;
+	background-position: 0 1;
 	border: 1 none #000;
 
 	background-position: 1 0;
 	border: 2 none #000;
 
+	padding-left: 35;
+	padding-left: 58;
+	padding-left: 32;
 	padding-right: 0;
 	padding-top: 0;
 
@@ -40,9 +41,8 @@ table of keywords and their usage
 
 | keyword | usage |
 |---------|-------|
-| background-size \<count\> | tell the interpreter that you want to create \<count\> variables, each set to 0 |
-| background-position \<index\> | selects the variable at \<index\>, assuming the first created is at index 0, ignores second argument for now |
-| background-color \<color\> | sets the selected variable from `background-position-x` to the hexadecimal value in the color code |
+| background-position \<index\> \<rewrite\> | selects the variable at \<index\>, assuming the first created is at index 0<br>the second arg is the rewrite type, 0 for nothing(if variable doesnt exist it is an integer)<br>1 for rewrite the variable to an integer<br>2 for rewrite the variable to a string |
+| background-color \<color\> | sets the selected variable from `background-position` to the hexadecimal value in the color code<br>if the variable is a string, then the character with a matching ascii value to \<color\> is appended to the end |
 | outline \<start\> \<type\> \<end\> | starts a loop starting from the \<start\> and ending at \<end\>, where \<start\> is a decimal value and \<end\> is hexadecimal. the type specifies how the loop is done, `solid` for a continuous loop with a step of positive 1 |
 | overflow | the argument is ignored for now but is required to make the css look valid, defines the end of the loop |
 | border \<var1\> \<op\> \<var2\> | will perform the mathematical operation \<op\> and store it in the selected variable.<br>currently ops:<br>`solid` for addition<br>`none` for subtraction where the second input is treated as an integer literal, useful for assigning variables to other variables |
