@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::process::exit;
 use std::io::{Read, Write};
 use std::io;
 use std::env;
@@ -194,9 +195,25 @@ fn main() -> std::io::Result<()> {
 		}
 		else if tok.t == TokenType::Newline {
 			match command {
-				1 => exprs.push(Expr::SelectVar(args[0].value, args[1].value)),
-				2 => exprs.push(Expr::SetVar(args[0].value)),
+				1 => {
+					if args.len() < 2 {
+						eprintln!("Expected two args for a select var");
+						exit(1);
+					}
+					exprs.push(Expr::SelectVar(args[0].value, args[1].value));
+				}
+				2 => {
+					if args.len() < 1 {
+						eprintln!("Expected an arg for a set var");
+						exit(1);
+					}
+					exprs.push(Expr::SetVar(args[0].value));
+				}
 				3 => {
+					if args.len() < 3 {
+						eprintln!("Expected 3 args for loop");
+						exit(1);
+					}
 					let mut c: char = ' ';
 					match args[1].string.as_str() {
 						"solid" => c = '+', // step of +1
@@ -205,6 +222,10 @@ fn main() -> std::io::Result<()> {
 					exprs.push(Expr::Loop(args[0].value, c, args[2].value));
 				}
 				4 => {
+					if args.len() < 3 {
+						eprintln!("Expected 3 args for math operation");
+						exit(1);
+					}
 					let mut c: char = ' ';
 					match args[1].string.as_str() {
 						"none" => c = '_', // sub with rhs as literal
@@ -221,15 +242,57 @@ fn main() -> std::io::Result<()> {
 					}
 					exprs.push(Expr::Math(args[0].value, c, args[2].value));
 				}
-				5 => exprs.push(Expr::AddToPrint(args[0].value)),
-				6 => exprs.push(Expr::Print(args[0].value)),
+				5 => {
+					if args.len() < 1 {
+						eprintln!("Expected 1 arg for add var print");
+						exit(1);
+					}
+					exprs.push(Expr::AddToPrint(args[0].value));
+				}
+				6 => {
+					if args.len() < 1 {
+						eprintln!("Expected 1 arg for print");
+						exit(1);
+					}
+					exprs.push(Expr::Print(args[0].value));
+				}
 				7 => exprs.push(Expr::LoopEnd),
-				8 => exprs.push(Expr::AddCharToPrint(args[0].value)),
-				9 => exprs.push(Expr::AddVarCharPrint(args[0].value)),
-				10 => exprs.push(Expr::Conditional(args[0].value, args[1].value, args[2].value, args[3].value)),
-				11 => exprs.push(Expr::Label(args[0].value)),
+				8 => {
+					if args.len() < 1 {
+						eprintln!("Expected 1 arg for add char print");
+						exit(1);
+					}
+					exprs.push(Expr::AddCharToPrint(args[0].value));
+				}
+				9 => {
+					if args.len() < 1 {
+						eprintln!("Expected 1 arg for add var as char print");
+						exit(1);
+					}
+					exprs.push(Expr::AddVarCharPrint(args[0].value));
+				}
+				10 => {
+					if args.len() < 4 {
+						eprintln!("Expected 4 args for conditional");
+						exit(1);
+					}
+					exprs.push(Expr::Conditional(args[0].value, args[1].value, args[2].value, args[3].value));
+				}
+				11 => {
+					if args.len() < 1 {
+						eprintln!("Expected 1 arg for label");
+						exit(1);
+					}
+					exprs.push(Expr::Label(args[0].value));
+				}
 				12 => exprs.push(Expr::Exit),
-				13 => exprs.push(Expr::UserInput(args[0].string == "all", args[1].value)),
+				13 => {
+					if args.len() < 2 {
+						eprintln!("Expected 2 args for user input");
+						exit(1);
+					}
+					exprs.push(Expr::UserInput(args[0].string == "all", args[1].value));
+				}
 				_ => {}
 			}
 			command = -1;
@@ -317,12 +380,15 @@ fn main() -> std::io::Result<()> {
 								loop_index = -1;
 							}
 						}
-						_ => loop_index = -1,
+						_ => {
+							eprintln!("Loop requires valid loop type");
+							exit(1);
+						}
 					}
 				}
 			}
 			Expr::LoopEnd => {
-				if loop_index > 0 {
+				if loop_index >= 0 {
 					index = loop_index;
 					index -= 1;
 				}
@@ -335,50 +401,90 @@ fn main() -> std::io::Result<()> {
 						if vars[lhs as usize].clone().as_int() != None {
 							res = vars[lhs as usize].clone().as_int().unwrap() - rhs;
 						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
+						}
 					}
 					'~' => {
 						if vars[rhs as usize].clone().as_int() != None {
 							res = lhs - vars[rhs as usize].clone().as_int().unwrap();
+						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
 						}
 					}
 					'-' => {
 						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
 							res = vars[lhs as usize].clone().as_int().unwrap() - vars[rhs as usize].clone().as_int().unwrap();
 						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
+						}
 					}
 					'=' => {
 						if vars[lhs as usize].clone().as_int() != None {
 							res = vars[lhs as usize].clone().as_int().unwrap() + rhs;
+						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
 						}
 					}
 					'+' => {
 						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
 							res = vars[lhs as usize].clone().as_int().unwrap() + vars[rhs as usize].clone().as_int().unwrap();
 						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
+						}
 					}
 					'8' => {
 						if vars[lhs as usize].clone().as_int() != None {
 							res = vars[lhs as usize].clone().as_int().unwrap() * rhs;
+						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
 						}
 					}
 					'*' => {
 						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
 							res = vars[lhs as usize].clone().as_int().unwrap() * vars[rhs as usize].clone().as_int().unwrap();
 						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
+						}
 					}
 					'\\' => {
 						if vars[rhs as usize].clone().as_int() != None {
 							res = lhs / vars[rhs as usize].clone().as_int().unwrap();
+						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
 						}
 					}
 					'|' => {
 						if vars[lhs as usize].clone().as_int() != None {
 							res = vars[lhs as usize].clone().as_int().unwrap() / rhs;
 						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
+						}
 					}
 					'/' => {
 						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
 							res = vars[lhs as usize].clone().as_int().unwrap() / vars[rhs as usize].clone().as_int().unwrap();
+						}
+						else{
+							eprintln!("Cannot do math with string variable");
+							exit(1);
 						}
 					}
 					_ => failed = true
@@ -386,12 +492,20 @@ fn main() -> std::io::Result<()> {
 				if !failed {
 					vars[selected_var as usize] = Var::Integer(res);
 				}
+				else {
+					eprintln!("Found unknown math operator");
+					exit(1);
+				}
 			}
 			Expr::AddToPrint(var_index) => printing.push(var_index),
 			Expr::AddCharToPrint(char_value) => printing.push(-char_value),
 			Expr::AddVarCharPrint(var_index) => {
 				if vars[var_index as usize].clone().as_int() != None {
 					printing.push(-vars[var_index as usize].clone().as_int().unwrap());
+				}
+				else {
+					eprintln!("Cannot convert string variable to character");
+					exit(1);
 				}
 			}
 			Expr::Print(count) => {
@@ -420,7 +534,13 @@ fn main() -> std::io::Result<()> {
 					lhs_val = lhs;
 				}
 				else{
-					lhs_val = vars[lhs as usize].clone().as_int().unwrap();
+					if vars[lhs as usize].clone().as_int() != None {
+						lhs_val = vars[lhs as usize].clone().as_int().unwrap();
+					}
+					else {
+						eprintln!("Cannot do conditional with string");
+						exit(1);
+					}
 				}
 
 				if (op & 0b0100) == 4 {
@@ -428,7 +548,13 @@ fn main() -> std::io::Result<()> {
 					rhs_val = rhs;
 				}
 				else{
-					rhs_val = vars[rhs as usize].clone().as_int().unwrap();
+					if vars[rhs as usize].clone().as_int() != None {
+						rhs_val = vars[rhs as usize].clone().as_int().unwrap();
+					}
+					else{
+						eprintln!("Cannot do conditional with string");
+						exit(1);
+					}
 				}
 
 				match op & 0b0011 {
@@ -452,7 +578,10 @@ fn main() -> std::io::Result<()> {
 							index = labels[jump as usize];
 						}
 					}
-					_ => {}
+					_ => {
+						eprintln!("Found unknown conditional operator");
+						exit(1);
+					}
 				}
 			}
 			Expr::Exit => {
@@ -460,6 +589,10 @@ fn main() -> std::io::Result<()> {
 			}
 			Expr::UserInput(should_prompt, prompt_var) => {
 				if should_prompt {
+					if prompt_var >= vars.len() as i32 {
+						eprintln!("Prompt must be a valid variable");
+						exit(1);
+					}
 					print_variable(vars[prompt_var as usize].clone());
 				}
 				let _ = io::stdout().flush();
