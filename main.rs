@@ -1,5 +1,6 @@
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
+use std::io;
 use std::env;
 
 #[derive(PartialEq, Clone)]
@@ -30,6 +31,7 @@ enum Expr {
 	Conditional(i32, i32, i32, i32),
 	Label(i32),
 	Exit,
+	UserInput(bool, i32),
 }
 
 #[derive(Clone)]
@@ -51,6 +53,15 @@ impl Var {
 			Self::Str(s) => Some(s),
 			_ => None
 		}
+	}
+}
+
+fn print_variable(var: Var) {
+	if var.clone().as_int() != None {
+		print!("{}", var.clone().as_int().unwrap());
+	}
+	else{
+		print!("{}", var.clone().as_string().unwrap());
 	}
 }
 
@@ -173,6 +184,7 @@ fn main() -> std::io::Result<()> {
 					"margin:" => command = 10,
 					"opacity:" => command = 11,
 					"word-wrap:" => command = 12,
+					"transition:" => command = 13,
 					_ => {}
 				}
 			}
@@ -217,6 +229,7 @@ fn main() -> std::io::Result<()> {
 				10 => exprs.push(Expr::Conditional(args[0].value, args[1].value, args[2].value, args[3].value)),
 				11 => exprs.push(Expr::Label(args[0].value)),
 				12 => exprs.push(Expr::Exit),
+				13 => exprs.push(Expr::UserInput(args[0].string == "all", args[1].value)),
 				_ => {}
 			}
 			command = -1;
@@ -388,12 +401,8 @@ fn main() -> std::io::Result<()> {
 				}
 				for i in 0..end {
 					if printing[i] >= 0 {
-						if vars[printing[i] as usize].clone().as_int() != None {
-							print!("{} ", vars[printing[i] as usize].clone().as_int().unwrap());
-						}
-						else{
-							print!("{} ", vars[printing[i] as usize].clone().as_string().unwrap());
-						}
+						print_variable(vars[printing[i] as usize].clone());
+						print!(" ");
 					}
 					else {
 						print!("{}", -printing[i] as u8 as char);
@@ -448,6 +457,16 @@ fn main() -> std::io::Result<()> {
 			}
 			Expr::Exit => {
 				index = exprs.len() as i32;
+			}
+			Expr::UserInput(should_prompt, prompt_var) => {
+				if should_prompt {
+					print_variable(vars[prompt_var as usize].clone());
+				}
+				let _ = io::stdout().flush();
+				let mut inp = String::new();
+				let _ = io::stdin().read_line(&mut inp);
+				let _ = inp.pop();
+				vars[selected_var as usize] = Var::Str(inp);
 			}
 			_ => {}
 		}

@@ -1,0 +1,11 @@
+.main {
+	background-position: 0 2;
+	background-color: #03e;
+	background-color: #020;
+
+	background-position: 1 2;
+	transition: all 0;
+
+	padding-right: 1;
+	padding-top: 0;
+}

@@ -53,3 +53,4 @@ table of keywords and their usage
 | margin \<var1\> \<op\> \<var2\> \<jump\> | performs a conditional operation on the 2 vars/integer literals specified, jumps to the \<jump\> label if the condition is false<br>to figure out the op you use a 4 bit number:<br>the highest bit is 0 if the lhs is a var, 1 if otherwise, then the same for the rhs, then the smallest two bits are the operation:<br>0 for ==, 1 for !=, 2 for >, 3 for <<br>for example to check if the variable at index 1 is not equal to the number 3 you would get 0101 = 6|
 | opacity \<label\> | defines a label to jump to later |
 | word-wrap | exits the code early, ignores args |
+| transition \<prompt\> \<var\> | prompts for user input, stores the string into the selected variable<br>if\<prompt\> is `all`, it will print out \<var\> as a prompt, otherwise ignores all args |
