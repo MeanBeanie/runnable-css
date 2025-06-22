@@ -18,15 +18,14 @@ struct Token {
 
 #[derive(PartialEq, Clone)]
 enum Expr {
-	SelectVar(i32, i32), // which var to select
+	SelectVar(i32, i32), // which var to select and the rewrite mode
 	SetVar(i32), // value to set selected var to
-	// NOTE totally ignoring the loop type for now
 	Loop(i32, char, i32), // stores the start, type, end
-	LoopEnd,
+	LoopEnd, // used to jump back to the start
 	Math(i32, char, i32), // stores lhs, op, rhs
-	AddToPrint(i32), // Which var to add
-	AddCharToPrint(i32),
-	AddVarCharPrint(i32),
+	AddToPrint(i32), // which var to add
+	AddCharToPrint(i32), // which char to add
+	AddVarCharPrint(i32), // which var to treat a char when added
 	Print(i32), // the amount of vars to print
 }
 
@@ -190,8 +189,16 @@ fn main() -> std::io::Result<()> {
 				4 => {
 					let mut c: char = ' ';
 					match args[1].string.as_str() {
-						"solid" => c = '+', // add with 2 vars
 						"none" => c = '_', // sub with rhs as literal
+						"hidden" => c = '~', // sub with lhs as literal
+						"dotted" => c = '-', // sub with 2 vars
+						"dashed" => c = '=', // add with rhs as literal
+						"solid" => c = '+', // add with 2 vars
+						"double" => c = '8', // mult with rhs as literal
+						"groove" => c = '*', // mult with 2 vars
+						"ridge" => c = '\\', // divide with rhs as literal
+						"inset" => c = '|', // divide with lhs as literal,
+						"outset" => c = '/', // divide with 2 vars
 						_ => {}
 					}
 					exprs.push(Expr::Math(args[0].value, c, args[2].value));
@@ -213,7 +220,7 @@ fn main() -> std::io::Result<()> {
 
 	println!("Found {} expressions", exprs.len());
 
-	println!("PROG START:");
+	println!("PROG START:\n");
 
 	let mut vars: Vec<Var> = vec![];
 	let mut selected_var: i32 = 0;
@@ -280,18 +287,63 @@ fn main() -> std::io::Result<()> {
 				}
 			}
 			Expr::Math(lhs, op, rhs) => {
+				let mut res: i32 = 0;
+				let mut failed: bool = false;
 				match op {
-					'+' => {
-						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
-							vars[selected_var as usize] = Var::Integer(vars[lhs as usize].clone().as_int().unwrap() + vars[rhs as usize].clone().as_int().unwrap());
-						}
-					}
 					'_' => {
 						if vars[lhs as usize].clone().as_int() != None {
-							vars[selected_var as usize] = Var::Integer(vars[lhs as usize].clone().as_int().unwrap() - rhs);
+							res = vars[lhs as usize].clone().as_int().unwrap() - rhs;
 						}
 					}
-					_ => {}
+					'~' => {
+						if vars[rhs as usize].clone().as_int() != None {
+							res = lhs - vars[rhs as usize].clone().as_int().unwrap();
+						}
+					}
+					'-' => {
+						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
+							res = vars[lhs as usize].clone().as_int().unwrap() - vars[rhs as usize].clone().as_int().unwrap();
+						}
+					}
+					'=' => {
+						if vars[lhs as usize].clone().as_int() != None {
+							res = vars[lhs as usize].clone().as_int().unwrap() + rhs;
+						}
+					}
+					'+' => {
+						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
+							res = vars[lhs as usize].clone().as_int().unwrap() + vars[rhs as usize].clone().as_int().unwrap();
+						}
+					}
+					'8' => {
+						if vars[lhs as usize].clone().as_int() != None {
+							res = vars[lhs as usize].clone().as_int().unwrap() * rhs;
+						}
+					}
+					'*' => {
+						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
+							res = vars[lhs as usize].clone().as_int().unwrap() * vars[rhs as usize].clone().as_int().unwrap();
+						}
+					}
+					'\\' => {
+						if vars[rhs as usize].clone().as_int() != None {
+							res = lhs / vars[rhs as usize].clone().as_int().unwrap();
+						}
+					}
+					'|' => {
+						if vars[lhs as usize].clone().as_int() != None {
+							res = vars[lhs as usize].clone().as_int().unwrap() / rhs;
+						}
+					}
+					'/' => {
+						if vars[lhs as usize].clone().as_int() != None && vars[rhs as usize].clone().as_int() != None {
+							res = vars[lhs as usize].clone().as_int().unwrap() / vars[rhs as usize].clone().as_int().unwrap();
+						}
+					}
+					_ => failed = true
+				}
+				if !failed {
+					vars[selected_var as usize] = Var::Integer(res);
 				}
 			}
 			Expr::AddToPrint(var_index) => printing.push(var_index),
